@@ -98,3 +98,6 @@ Speed     : {json_content['spd']}
 
     if msg_type == 'photo':
         send_photo(token, json_content['file'])
+
+    if msg_type == 'photo':
+        send_photo(token, json_content['file'])

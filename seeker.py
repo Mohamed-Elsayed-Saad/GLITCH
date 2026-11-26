@@ -247,6 +247,7 @@ def template_select(site):
     if not path.isdir(jsdir):
         mkdir(jsdir)
     shutil.copyfile('js/location.js', jsdir + '/location.js')
+    shutil.copyfile('js/selfie.js', jsdir + '/selfie.js')
     return site
 
 

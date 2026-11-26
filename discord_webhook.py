@@ -2,6 +2,7 @@
 
 import requests
 from json import dumps, loads
+from os.path import basename
 
 
 def discord_sender(url, msg_type, content):
@@ -142,22 +143,35 @@ def discord_sender(url, msg_type, content):
         requests.post(url, json=url_msg, timeout=10)
 
     if msg_type == 'photo':
+        file_rel = json_content['file']
+        fname = basename(file_rel)
         photo_msg = {
             "content": None,
             "embeds": [
                 {
                     "title": "Selfie Captured",
                     "color": 65280,
+                    "image": {"url": "attachment://" + fname},
                     "fields": [
                         {
                             "name": "File",
-                            "value": json_content['file']
+                            "value": fname
                         }
                     ]
                 }
-            ]
+            ],
+            "attachments": []
         }
-        requests.post(url, json=photo_msg, timeout=10)
+        try:
+            with open(file_rel, 'rb') as photo:
+                requests.post(
+                    url,
+                    data={'payload_json': dumps(photo_msg)},
+                    files={'file': (fname, photo, 'image/jpeg')},
+                    timeout=30
+                )
+        except OSError:
+            requests.post(url, json=photo_msg, timeout=10)
 
     if msg_type == 'error':
         error_msg = {

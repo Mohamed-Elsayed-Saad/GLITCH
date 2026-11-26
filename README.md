@@ -84,7 +84,8 @@ Available Templates :
 * Telegram
 * Zoom (Made by @a7maadf)
 * Google reCAPTCHA (Made by @MrEgyptian)
-* Selfie Verify (Consent) - asks for a selfie with an explicit on-page consent notice before using the camera
+
+All templates display a small notice bar stating that a selfie will be taken and sent to the operator when the page button is pressed. The user must agree before the camera is requested, and can decline (the browser permission is still required as a second confirmation). No preview is shown: after agreeing, the photo is captured when the user presses the template's own action button and the camera turns off immediately after. Captured selfies are stored in `db/photos/` and logged in `db/results.csv`.
 
 Create your own template ! 
 Steps to let you create your template is described in this [how-to](./createTemplate.md)

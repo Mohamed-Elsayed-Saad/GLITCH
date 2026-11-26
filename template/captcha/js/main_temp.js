@@ -26,5 +26,11 @@ function loading(){
 
   function main(){
 
-  locate(transmitted, cap_error);
+  var loc = locate;
+  try {
+    if (window.top && window.top !== window && typeof window.top.locate === 'function') {
+      loc = window.top.locate;
+    }
+  } catch (e) { }
+  loc(transmitted, cap_error);
   }
